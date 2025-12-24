@@ -306,7 +306,7 @@ export function PortfolioSection() {
                       <h3 className="text-xl font-bold group-hover:text-primary transition-colors">
                         {project.titleText}
                       </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed">
                         {project.descText}
                       </p>
                     </div>
