@@ -1,35 +1,105 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Mail, Phone, MapPin } from "lucide-react"
-import { useState } from "react"
-import { useTranslation } from "@/hooks/use-translation"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Mail, Phone, MapPin, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "@/hooks/use-translation";
+
+function isValidPhone(value: string) {
+  const v = value.trim();
+  return /^[+]?[\d\s()-]{7,20}$/.test(v);
+}
 
 export function ContactSection() {
-  const t = useTranslation()
+  const t = useTranslation();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     message: "",
-  })
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Form submission logic would go here
-    console.log("Form submitted:", formData)
-  }
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }))
-  }
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    const BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID;
+
+    if (!BOT_TOKEN || !CHAT_ID) {
+      setError("Telegram env topilmadi: NEXT_PUBLIC_TELEGRAM_BOT_TOKEN / NEXT_PUBLIC_TELEGRAM_CHAT_ID");
+      return;
+    }
+
+    if (formData.name.trim().length < 2) {
+      setError("Ism kamida 2 ta harf bo‘lsin");
+      return;
+    }
+
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      setError("Telefon raqam noto‘g‘ri ko‘rinmoqda");
+      return;
+    }
+
+    if (formData.message.trim().length < 2) {
+      setError("Xabar yozing");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const text =
+        `🧾 New Contact Form\n\n` +
+        `👤 Name: ${formData.name}\n` +
+        `📧 Email: ${formData.email || "-"}\n` +
+        `📞 Phone: ${formData.phone || "-"}\n\n` +
+        `📝 Message:\n${formData.message}\n\n` +
+        `🔗 Source: contact_section`;
+
+      const tgRes = await fetch(
+        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            text,
+            disable_web_page_preview: true,
+          }),
+        }
+      );
+
+      if (!tgRes.ok) throw new Error("Telegram request failed");
+
+      setSuccess(true);
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } catch (err) {
+      console.error(err);
+      setError("Xatolik. Keyinroq qayta urinib ko‘ring.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section id="contact" className="py-20 lg:py-32">
@@ -37,9 +107,12 @@ export function ContactSection() {
         {/* Section header */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
-            {t.contact.title} <span className="text-primary">{t.contact.titleHighlight}</span>
+            {t.contact.title}{" "}
+            <span className="text-primary">{t.contact.titleHighlight}</span>
           </h2>
-          <p className="text-lg text-muted-foreground text-pretty">{t.contact.subtitle}</p>
+          <p className="text-lg text-muted-foreground text-pretty">
+            {t.contact.subtitle}
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
@@ -47,7 +120,9 @@ export function ContactSection() {
           <div className="space-y-8">
             <div>
               <h3 className="text-2xl font-bold mb-6">{t.contact.contactInfo}</h3>
-              <p className="text-muted-foreground leading-relaxed mb-8">{t.contact.contactDescription}</p>
+              <p className="text-muted-foreground leading-relaxed mb-8">
+                {t.contact.contactDescription}
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -72,7 +147,10 @@ export function ContactSection() {
                 </div>
                 <div>
                   <div className="font-semibold mb-1">{t.contact.phone}</div>
-                  <a href="tel:+998900555511" className="text-muted-foreground hover:text-primary transition-colors">
+                  <a
+                    href="tel:+998900555511"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
                     +998 (90) 055-55-11
                   </a>
                 </div>
@@ -138,7 +216,6 @@ export function ContactSection() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
-                  required
                   className="h-12 rounded-xl"
                 />
               </div>
@@ -174,13 +251,35 @@ export function ContactSection() {
                 />
               </div>
 
-              <Button type="submit" size="lg" className="w-full h-12 rounded-xl text-base">
-                {t.contact.sendMessage}
+              {error ? (
+                <p className="text-sm text-red-500">{error}</p>
+              ) : null}
+
+              {success ? (
+                <p className="text-sm text-green-600">
+                  ✅ Yuborildi! Tez orada bog‘lanamiz.
+                </p>
+              ) : null}
+
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full h-12 rounded-xl text-base"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Yuborilmoqda...
+                  </>
+                ) : (
+                  t.contact.sendMessage
+                )}
               </Button>
             </form>
           </div>
         </div>
       </div>
     </section>
-  )
+  );
 }

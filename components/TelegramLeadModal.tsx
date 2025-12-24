@@ -141,40 +141,55 @@ export function TelegramLeadModal({
     return ok;
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrServer(null);
+ const submit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setErrServer(null);
 
-    if (!validate()) return;
+  if (!validate()) return;
 
-    try {
-      setSubmitting(true);
+  try {
+    setSubmitting(true);
 
-      const res = await fetch("/api/telegram/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          phone,
-          message,
-          locale,
-          source: "website_modal",
-        }),
-      });
+    const BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID;
 
-      if (!res.ok) throw new Error("Request failed");
-
-      setSuccess(true);
-      setName("");
-      setPhone("");
-      setMessage("");
-    } catch (e) {
-      console.error(e);
-      setErrServer(tr.errors.server);
-    } finally {
-      setSubmitting(false);
+    if (!BOT_TOKEN || !CHAT_ID) {
+      throw new Error("Telegram env not set");
     }
-  };
+
+    const text =
+      `🧾 New Lead\n\n` +
+      `👤 Name: ${name}\n` +
+      `📞 Phone: ${phone}\n` +
+      `📝 Message: ${message || "-"}\n` +
+      `🌍 Locale: ${locale}\n` +
+      `🔗 Source: website_modal`;
+
+    const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text,
+        // parse_mode: "HTML", // xohlasang yoqasan
+        disable_web_page_preview: true,
+      }),
+    });
+
+    if (!tgRes.ok) throw new Error("Telegram request failed");
+
+    setSuccess(true);
+    setName("");
+    setPhone("");
+    setMessage("");
+  } catch (e) {
+    console.error(e);
+    setErrServer(tr.errors.server);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   if (!open) return null;
 
