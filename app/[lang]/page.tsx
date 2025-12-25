@@ -7,6 +7,7 @@ import { PortfolioSection } from "@/components/portfolio-section"
 import { CTASection } from "@/components/cta-section"
 import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
+import { StructuredData } from "@/components/structured-data"
 import { isValidLanguage } from "@/lib/i18n/utils"
 import { notFound } from "next/navigation"
 
@@ -27,6 +28,7 @@ export default async function LangPage({
 
   return (
     <div className="min-h-screen">
+      <StructuredData />
       <Navigation />
       <HeroSection />
       <ServicesSection />
