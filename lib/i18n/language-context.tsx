@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 
 export type Language = "ru" | "uz"
 
@@ -12,23 +13,32 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("ru")
+export function LanguageProvider({
+  children,
+  initialLanguage,
+}: {
+  children: React.ReactNode
+  initialLanguage: Language
+}) {
+  const [language, setLanguageState] = useState<Language>(initialLanguage)
+  const router = useRouter()
+  const pathname = usePathname()
 
-  // Load language from localStorage on mount
+  // Sync language state with URL on mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem("language") as Language | null
-    if (savedLanguage && (savedLanguage === "ru" || savedLanguage === "uz")) {
-      setLanguageState(savedLanguage)
-    }
-  }, [])
+    setLanguageState(initialLanguage)
+    document.documentElement.lang = initialLanguage
+  }, [initialLanguage])
 
-  // Save language to localStorage when it changes
+  // Handle language change: navigate to new route
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     localStorage.setItem("language", lang)
-    // Update HTML lang attribute for accessibility
     document.documentElement.lang = lang
+
+    // Replace current language in URL with new language
+    const newPath = pathname.replace(/^\/(uz|ru)/, `/${lang}`)
+    router.push(newPath)
   }
 
   return <LanguageContext.Provider value={{ language, setLanguage }}>{children}</LanguageContext.Provider>
